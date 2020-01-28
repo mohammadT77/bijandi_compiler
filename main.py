@@ -1,5 +1,7 @@
 import sys
+from lark import *
 from src.models import *
+from src.converter import GrammarConverter
 
 OPTIONS = {
     'help': {
@@ -11,8 +13,6 @@ OPTIONS = {
     'grammar': {}
 }
 
-print()
-exit()
 
 def print_option(option_name, attr=None, _continue=False):
     content = OPTIONS[option_name]
@@ -42,26 +42,39 @@ def help_mode():
 
 
 def grammar_mode():
-    print("Enter your grammar (max rules: %d, `$` for escape) :\n" % Grammar.MAX_RULES)
-    grammar_str_array = []
-    for i in range(Grammar.MAX_RULES):
-        r = input("rule %d#:\t" % (i + 1))
-        if r == '$': break
-        grammar_str_array.append(r)
-    grammar = None
-    try:
-        grammar = Grammar(grammar_str_array)
-    except Exception as e:
-        print("Error: ", e)
-        exit()
-    name = input("Enter Grammar name (Optional): ")
-    if name:
-        grammar.set_name(name)
+    from src.utils import find_lark_tree_tokens as find_tokens
+    from os.path import isfile
+    MAX_GRAMMAR_RULES = 10
+    print("Enter your grammar rules or Grammar file address(end with !!!, Max : 10):")
+    g = ""
+    for i in range(MAX_GRAMMAR_RULES):
+        _in = input()
+        if isfile(_in) or isfile(_in[1:-1]):
+            g = open(_in if isfile(_in) else _in[1:-1], 'r').read()
+            break
+        if _in == '!!!':
+            break
+        g += _in + "\n"
 
-    print(grammar)
+    start = input("Enter your start rule name: ")
+
+    g_convert = GrammarConverter(g)
+
+    p = Lark(g_convert.get_lark(), start=start.strip())
+    try:
+        p_tree = p.parse(input("Enter text: "))
+        print(">>> Valid input String\n")
+        print(">>> Tokens:\n", find_tokens(p_tree), "\n")
+        print(">>> Tree map:\n", p_tree, "\n")
+        print(">>> Tree:\n", p_tree.pretty(), "\n")
+    except UnexpectedCharacters as e:
+        print("\n", ">>> Invalid input String!\n", e)
+
+    exit()
 
 
 def main(args):
+    print("\n===> Alireza Bijandi 952023044 : Compiler Project { Parser } <===\n")
     args = args[1:]
     if not args:
         print_option('help', 'default')
